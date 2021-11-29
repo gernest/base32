@@ -8,41 +8,41 @@ This implements `base32` `encoding` and `decoding` for the zig programming langu
 
 ```zig
 const std = @import("std");
-const warn = std.debug.warn;
 const base32 = @import("src/base32.zig");
+const stdout = std.io.getStdOut().writer();
 
 pub fn main() !void {
-    var buf = &try std.Buffer.init(std.debug.global_allocator, "");
-    defer buf.deinit();
-    try encodeString(buf);
-    try buf.resize(0);
-    warn("\n\n");
-    try decodeString(buf);
+    try encodeString();
+    try stdout.print("\n\n", .{});
+    try decodeString();
 }
 
-fn encodeString(buf: *std.Buffer) !void {
+fn encodeString() !void {
     const src = "any + old & data";
-    const size = base32.std_encoding.encodeLen(src.len);
-    try buf.resize(size);
-    base32.std_encoding.encode(buf.toSlice(), src);
-    warn("ExampleEncodingToString:\nsource: \"{}\"\noutput: {}\n", src, buf.toSlice());
+    comptime const size = base32.std_encoding.encodeLen(src.len);
+    var buf: [size]u8 = undefined;
+    var out = base32.std_encoding.encode(&buf, src);
+    try stdout.print("ExampleEncodingToString:\nsource: \"{s}\"\noutput: {s}\n", .{src, out});
 }
 
-fn decodeString(buf: *std.Buffer) !void {
+fn decodeString() !void {
     const src = "ONXW2ZJAMRQXIYJAO5UXI2BAAAQGC3TEEDX3XPY=";
-    try base32.std_encoding.decode(buf, src);
-    warn("ExampleDecodingString:\nsource: \"{}\"\noutput: {}\n", src, buf.toSlice());
+    comptime const size = base32.std_encoding.decodeLen(src.len);
+    var buf: [size]u8 = undefined;
+    var out = try base32.std_encoding.decode(&buf, src);
+    try stdout.print("ExampleDecodingString:\nsource: {s}\noutput: \"{s}\"\n", .{src, out});
 }
 ```
 
 ```
-$ zig run example.zig 
+$ zig run example.zig
 ExampleEncodingToString:
 source: "any + old & data"
 output: MFXHSIBLEBXWYZBAEYQGIYLUME======
 
 
 ExampleDecodingString:
-source: "ONXW2ZJAMRQXIYJAO5UXI2BAAAQGC3TEEDX3XPY="
-output: some data with  and ﻿
+source: ONXW2ZJAMRQXIYJAO5UXI2BAAAQGC3TEEDX3XPY=
+output: "some data with  and ﻿"
+
 ```
