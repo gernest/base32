@@ -1,7 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-const assert = std.debug.assert;
-const warn = std.debug.warn;
+const log = std.log.scoped(.base32);
 
 const encode_std = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const encode_hex = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
@@ -20,9 +19,9 @@ const Encoding = struct {
     }
 
     pub fn initWithPadding(encoder_string: []const u8, pad_char: ?u8) Encoding {
-        assert(encoder_string.len == 32);
+        std.debug.assert(encoder_string.len == 32);
         if (pad_char) |c| {
-            assert(!(c == 'r' or c == '\n' or c > 0xff));
+            std.debug.assert(!(c == 'r' or c == '\n' or c > 0xff));
         }
         return Encoding{
             .buf = blk: {
@@ -52,9 +51,10 @@ const Encoding = struct {
         self: Encoding,
         destination: []u8,
         source: []const u8,
-    ) void {
+    ) []const u8 {
         var dst = destination;
         var src = source;
+        var n: usize = 0;
         while (src.len > 0) {
             var b = [_]u8{0} ** 8;
             switch (src.len) {
@@ -95,12 +95,14 @@ const Encoding = struct {
                 dst[5] = self.buf[b[5] & 31];
                 dst[6] = self.buf[b[6] & 31];
                 dst[7] = self.buf[b[7] & 31];
+                n += 8;
             } else {
                 var i: usize = 0;
                 while (i < size) : (i += 1) {
                     const x = b[i] & 31;
                     dst[i] = self.buf[b[i] & 31];
                 }
+                n += i;
             }
             if (src.len < 5) {
                 if (self.pad_char == null) break;
@@ -121,6 +123,7 @@ const Encoding = struct {
             src = src[5..];
             dst = dst[8..];
         }
+        return destination[0..n];
     }
 
     pub fn decodeLen(self: Encoding, n: usize) usize {
@@ -130,9 +133,9 @@ const Encoding = struct {
 
     pub fn decode(
         self: Encoding,
-        buf: *std.Buffer,
+        dest: []u8,
         source: []const u8,
-    ) !void {
+    ) ![]const u8 {
         var num_newlines: usize = 0;
         for (source) |c| {
             if (c == '\r' or c == '\n') num_newlines += 1;
@@ -140,8 +143,10 @@ const Encoding = struct {
         if (num_newlines > 0) {
             // src contains new lines.
         }
-        try buf.resize(self.decodeLen(source.len));
-        var dst = buf.toSlice();
+        if (dest.len < self.decodeLen(source.len)) {
+            return error.NotEnoughSpace;
+        }
+        var dst = dest;
         var src = source;
         var end: bool = false;
         var n: usize = 0;
@@ -155,11 +160,9 @@ const Encoding = struct {
                 if (src.len == 0) {
                     if (self.pad_char != null) {
                         // We have reached the end and are missing padding
-                        try buf.resize(n);
                         return error.MissingPadding;
                     }
-                    try buf.resize(j);
-                    return;
+                    return dest[0..j];
                 }
                 const in = src[0];
                 src = src[1..];
@@ -167,17 +170,15 @@ const Encoding = struct {
                     // We've reached the end and there's padding
                     if (src.len + j < 8 - 1) {
                         // not enough padding
-                        try buf.resize(n);
-                        warn("incorrenct input at {}\n", olen);
+                        log.warn("incorrenct input at {}\n", .{olen});
                         return error.NotEnoughPadding;
                     }
                     var k: usize = 0;
                     while (k < 8 - 1 - j) : (k += 1) {
                         if (src.len > k and self.pad_char != null and src[k] != self.pad_char.?) {
                             // incorrect padding
-                            try buf.resize(n);
                             const pos = olen - src.len + k - 1;
-                            warn("incorrenct input at {}\n", pos);
+                            log.warn("incorrenct input at {}\n", .{pos});
                             return error.IncorrectPadding;
                         }
                     }
@@ -189,22 +190,20 @@ const Encoding = struct {
                     // Examples" for an illustration for how the 1st, 3rd and 6th base32
                     // src bytes do not yield enough information to decode a dst byte.
                     if (dlen == 1 or dlen == 3 or dlen == 6) {
-                        try buf.resize(n);
                         const pos = olen - src.len - 1;
-                        warn("incorrenct input at {}\n", pos);
+                        log.warn("incorrenct input at {}\n", .{pos});
                         return error.IncorrectPadding;
                     }
                     break;
                 }
                 dbuf[j] = self.decode_map[in];
                 if (dbuf[j] == 0xFF) {
-                    try buf.resize(n);
                     const pos = olen - src.len - 1;
-                    warn("{} {}\n", in, self.decode_map[in]);
+                    log.warn("{} {}\n", .{ in, self.decode_map[in] });
                     for (self.decode_map) |m, idx| {
-                        warn("== {} ={x}\n", idx, m);
+                        log.warn("== {} ={x}\n", .{ idx, m });
                     }
-                    warn("incorrenct input at {}\n", pos);
+                    log.warn("incorrenct input at {}\n", .{pos});
                     return error.CorruptImput;
                 }
                 j += 1;
@@ -256,7 +255,7 @@ const Encoding = struct {
             }
             dsti += 5;
         }
-        try buf.resize(n);
+        return dest[0..n];
     }
 };
 
@@ -326,21 +325,19 @@ const pairs = [_]TestPair{
 };
 
 test "Encoding" {
-    var buf = try std.Buffer.init(std.debug.global_allocator, "");
-    defer buf.deinit();
+    var buf: [1024]u8 = undefined;
     for (pairs) |ts, idx| {
         const size = std_encoding.encodeLen(ts.decoded.len);
-        try buf.resize(size);
-        std_encoding.encode(buf.toSlice(), ts.decoded);
-        testing.expectEqualSlices(u8, ts.encoded, buf.toSlice());
+        const result = std_encoding.encode(buf[0..size], ts.decoded);
+        try testing.expectEqualSlices(u8, ts.encoded, result);
     }
 }
 
 test "Decoding" {
-    var buf = &try std.Buffer.init(std.debug.global_allocator, "");
-    defer buf.deinit();
+    var buf: [1024]u8 = undefined;
     for (pairs) |ts, idx| {
-        try std_encoding.decode(buf, ts.encoded);
-        testing.expectEqualSlices(u8, ts.decoded, buf.toSlice());
+        const size = std_encoding.decodeLen(ts.encoded.len);
+        var result = try std_encoding.decode(buf[0..size], ts.encoded);
+        try testing.expectEqualSlices(u8, ts.decoded, result);
     }
 }
