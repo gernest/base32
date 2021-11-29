@@ -4,12 +4,14 @@ const log = std.log.scoped(.base32);
 
 const encode_std = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const encode_hex = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
+const crockford_alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 pub const std_encoding = Encoding.initWithPadding(encode_std, std_padding_char);
 pub const hex_encoding = Encoding.initWithPadding(encode_hex, std_padding_char);
+pub const crockford_encoding = Encoding.initWithPadding(crockford_alphabet, null);
 const std_padding_char = '=';
 
-const Encoding = struct {
+pub const Encoding = struct {
     buf: [32]u8,
     decode_map: [256]u8,
     pad_char: ?u8 = null,
