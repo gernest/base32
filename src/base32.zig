@@ -101,7 +101,6 @@ pub const Encoding = struct {
             } else {
                 var i: usize = 0;
                 while (i < size) : (i += 1) {
-                    const x = b[i] & 31;
                     dst[i] = self.buf[b[i] & 31];
                 }
                 n += i;
@@ -328,7 +327,7 @@ const pairs = [_]TestPair{
 
 test "Encoding" {
     var buf: [1024]u8 = undefined;
-    for (pairs) |ts, idx| {
+    for (pairs) |ts| {
         const size = std_encoding.encodeLen(ts.decoded.len);
         const result = std_encoding.encode(buf[0..size], ts.decoded);
         try testing.expectEqualSlices(u8, ts.encoded, result);
@@ -337,7 +336,7 @@ test "Encoding" {
 
 test "Decoding" {
     var buf: [1024]u8 = undefined;
-    for (pairs) |ts, idx| {
+    for (pairs) |ts| {
         const size = std_encoding.decodeLen(ts.encoded.len);
         var result = try std_encoding.decode(buf[0..size], ts.encoded);
         try testing.expectEqualSlices(u8, ts.decoded, result);
