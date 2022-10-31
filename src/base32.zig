@@ -163,7 +163,9 @@ pub const Encoding = struct {
                         // We have reached the end and are missing padding
                         return error.MissingPadding;
                     }
-                    return dest[0..j];
+                    dlen = j;
+                    end = true;
+                    break;
                 }
                 const in = src[0];
                 src = src[1..];
@@ -339,6 +341,30 @@ test "Decoding" {
     for (pairs) |ts| {
         const size = std_encoding.decodeLen(ts.encoded.len);
         var result = try std_encoding.decode(buf[0..size], ts.encoded);
+        try testing.expectEqualSlices(u8, ts.decoded, result);
+    }
+}
+
+test "Encoding no padding" {
+    var buf: [1024]u8 = undefined;
+    const std_encoding_no_padding = Encoding.initWithPadding(encode_std, null);
+    for (pairs) |ts| {
+        const size = std_encoding_no_padding.encodeLen(ts.decoded.len);
+        const result = std_encoding_no_padding.encode(buf[0..size], ts.decoded);
+        var expected_end = std.mem.indexOf(u8, ts.encoded, "=") orelse ts.encoded.len;
+        const expected = ts.encoded[0..expected_end];
+        try testing.expectEqualSlices(u8, expected, result);
+    }
+}
+
+test "Decoding no padding" {
+    var buf: [1024]u8 = undefined;
+    const std_encoding_no_padding = Encoding.initWithPadding(encode_std, null);
+    for (pairs) |ts| {
+        const size = std_encoding_no_padding.decodeLen(ts.encoded.len);
+        var end_without_padding = std.mem.indexOf(u8, ts.encoded, "=") orelse ts.encoded.len;
+        const encoded_no_pad = ts.encoded[0..end_without_padding];
+        var result = try std_encoding_no_padding.decode(buf[0..size], encoded_no_pad);
         try testing.expectEqualSlices(u8, ts.decoded, result);
     }
 }
