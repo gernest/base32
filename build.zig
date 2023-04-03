@@ -1,16 +1,27 @@
 const std = @import("std");
 
 pub fn build(b: *std.build.Builder) void {
-    const mode = b.standardReleaseOptions();
+    const optimize = b.standardOptimizeOption(.{});
+    const target = b.standardTargetOptions(.{});
 
-    const lib = b.addStaticLibrary("base32", "src/base32.zig");
-    lib.setBuildMode(mode);
+    const lib = b.addStaticLibrary(
+        .{
+            .name = "base32",
+            .root_source_file = .{ .path = "src/base32.zig" },
+            .target = target,
+            .optimize = optimize,
+        },
+    );
     lib.install();
 
     const coverage = b.option(bool, "coverage", "Generate test coverage") orelse false;
 
-    var main_tests = b.addTest("src/base32.zig");
-    main_tests.setBuildMode(mode);
+    var main_tests = b.addTest(
+        .{
+            .root_source_file = .{ .path = "src/base32.zig" },
+            .optimize = optimize,
+        },
+    );
 
     if (coverage) {
         main_tests.setExecCmd(&[_]?[]const u8{
