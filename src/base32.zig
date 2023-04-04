@@ -33,7 +33,7 @@ pub const Encoding = struct {
             },
             .decode_map = blk: {
                 var a = [_]u8{0xFF} ** 256;
-                for (encoder_string) |c, i| {
+                for (encoder_string, 0..) |c, i| {
                     a[@intCast(usize, c)] = @intCast(u8, i);
                 }
                 break :blk a;
@@ -203,7 +203,7 @@ pub const Encoding = struct {
                 if (dbuf[j] == 0xFF) {
                     const pos = olen - src.len - 1;
                     log.warn("{} {}\n", .{ in, self.decode_map[in] });
-                    for (self.decode_map) |m, idx| {
+                    for (self.decode_map, 0..) |m, idx| {
                         log.warn("== {} ={x}\n", .{ idx, m });
                     }
                     log.warn("incorrenct input at {}\n", .{pos});
