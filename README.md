@@ -2,6 +2,17 @@
 
 This implements `base32` `encoding` and `decoding` for the zig programming language (ziglang)
 
+# Installation 
+First fetch dependency by running:
+```
+zig fetch --save git+https://github.com/gernest/base32
+```
+Then update your `build.zig` file to load the module:
+```
+const base32 = b.dependency("base32", .{});
+exe.root_module.addImport("base32", base32.module("base32"));
+```
+
 # Usage 
 
 `example.zig`
