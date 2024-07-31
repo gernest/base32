@@ -28,13 +28,13 @@ pub const Encoding = struct {
         return Encoding{
             .buf = blk: {
                 var a: [32]u8 = undefined;
-                std.mem.copy(u8, a[0..], encoder_string);
+                std.mem.copyForwards(u8, a[0..], encoder_string);
                 break :blk a;
             },
             .decode_map = blk: {
                 var a = [_]u8{0xFF} ** 256;
                 for (encoder_string, 0..) |c, i| {
-                    a[@intCast(usize, c)] = @intCast(u8, i);
+                    a[@intCast(c)] = @intCast(i);
                 }
                 break :blk a;
             },
@@ -147,12 +147,12 @@ pub const Encoding = struct {
         if (dest.len < self.decodeLen(source.len)) {
             return error.NotEnoughSpace;
         }
-        var dst = dest;
+        const dst = dest;
         var src = source;
         var end: bool = false;
         var n: usize = 0;
         var dsti: usize = 0;
-        var olen = src.len;
+        const olen = src.len;
         while (src.len > 0 and !end) {
             var dbuf = [_]u8{0} ** 8;
             var dlen: usize = 8;
@@ -340,7 +340,7 @@ test "Decoding" {
     var buf: [1024]u8 = undefined;
     for (pairs) |ts| {
         const size = std_encoding.decodeLen(ts.encoded.len);
-        var result = try std_encoding.decode(buf[0..size], ts.encoded);
+        const result = try std_encoding.decode(buf[0..size], ts.encoded);
         try testing.expectEqualSlices(u8, ts.decoded, result);
     }
 }
@@ -351,7 +351,7 @@ test "Encoding no padding" {
     for (pairs) |ts| {
         const size = std_encoding_no_padding.encodeLen(ts.decoded.len);
         const result = std_encoding_no_padding.encode(buf[0..size], ts.decoded);
-        var expected_end = std.mem.indexOf(u8, ts.encoded, "=") orelse ts.encoded.len;
+        const expected_end = std.mem.indexOf(u8, ts.encoded, "=") orelse ts.encoded.len;
         const expected = ts.encoded[0..expected_end];
         try testing.expectEqualSlices(u8, expected, result);
     }
@@ -362,9 +362,9 @@ test "Decoding no padding" {
     const std_encoding_no_padding = Encoding.initWithPadding(encode_std, null);
     for (pairs) |ts| {
         const size = std_encoding_no_padding.decodeLen(ts.encoded.len);
-        var end_without_padding = std.mem.indexOf(u8, ts.encoded, "=") orelse ts.encoded.len;
+        const end_without_padding = std.mem.indexOf(u8, ts.encoded, "=") orelse ts.encoded.len;
         const encoded_no_pad = ts.encoded[0..end_without_padding];
-        var result = try std_encoding_no_padding.decode(buf[0..size], encoded_no_pad);
+        const result = try std_encoding_no_padding.decode(buf[0..size], encoded_no_pad);
         try testing.expectEqualSlices(u8, ts.decoded, result);
     }
 }
