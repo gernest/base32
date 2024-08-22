@@ -173,7 +173,7 @@ pub const Encoding = struct {
                     // We've reached the end and there's padding
                     if (src.len + j < 8 - 1) {
                         // not enough padding
-                        log.warn("incorrenct input at {}\n", .{olen});
+                        log.warn("incorrect input at {}\n", .{olen});
                         return error.NotEnoughPadding;
                     }
                     var k: usize = 0;
@@ -181,7 +181,7 @@ pub const Encoding = struct {
                         if (src.len > k and self.pad_char != null and src[k] != self.pad_char.?) {
                             // incorrect padding
                             const pos = olen - src.len + k - 1;
-                            log.warn("incorrenct input at {}\n", .{pos});
+                            log.warn("incorrect input at {}\n", .{pos});
                             return error.IncorrectPadding;
                         }
                     }
@@ -194,7 +194,7 @@ pub const Encoding = struct {
                     // src bytes do not yield enough information to decode a dst byte.
                     if (dlen == 1 or dlen == 3 or dlen == 6) {
                         const pos = olen - src.len - 1;
-                        log.warn("incorrenct input at {}\n", .{pos});
+                        log.warn("incorrect input at {}\n", .{pos});
                         return error.IncorrectPadding;
                     }
                     break;
@@ -206,7 +206,7 @@ pub const Encoding = struct {
                     for (self.decode_map, 0..) |m, idx| {
                         log.warn("== {} ={x}\n", .{ idx, m });
                     }
-                    log.warn("incorrenct input at {}\n", .{pos});
+                    log.warn("incorrect input at {}\n", .{pos});
                     return error.CorruptImput;
                 }
                 j += 1;
