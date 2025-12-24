@@ -4,12 +4,17 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
-    const lib = b.addStaticLibrary(
+    const lib_mod = b.createModule(.{
+        .root_source_file = b.path("src/base32.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const lib = b.addLibrary(
         .{
+            .linkage = .static,
             .name = "base32",
-            .root_source_file = b.path("src/base32.zig"),
-            .target = target,
-            .optimize = optimize,
+            .root_module = lib_mod,
         },
     );
 
@@ -27,8 +32,7 @@ pub fn build(b: *std.Build) void {
 
     var main_tests = b.addTest(
         .{
-            .root_source_file = b.path("src/base32.zig"),
-            .optimize = optimize,
+            .root_module = lib_mod,
         },
     );
 
