@@ -1,6 +1,7 @@
 const std = @import("std");
 const base32 = @import("src/base32.zig");
-const stdout = std.io.getStdOut().writer();
+var stdout_writer = std.fs.File.stdout().writer(&.{});
+const stdout = &stdout_writer.interface;
 
 pub fn main() !void {
     try encodeString();
